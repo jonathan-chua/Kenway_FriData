@@ -1,2 +1,4 @@
 # Kenway_FriData
-Files &amp; Code for Kenway's FriData Educational Series
+# Files and Code for Kenway's FriData Educational Series
+
+27 Apr 2018 - Intro to Machine Learning (Robert Cooper)
