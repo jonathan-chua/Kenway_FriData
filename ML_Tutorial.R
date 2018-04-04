@@ -136,3 +136,6 @@ points(min.k$k, min.k$mse, col="red", pch=16)
 print(paste("Optimal Value k = ", min.k$k, sep=""))
 
 # Run optimal model & get estimates...
+# Chart plot the fit against the data, remember to sort the test set by Median Income so it matches the chart
+# If possible, try and find the point with the smallest k that is statistically indistinguishable from the minimum point
+# That is, the MSE - 1 standard deviation of the error (or squared error)  <= the MSE of the minimum point
