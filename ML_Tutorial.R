@@ -12,6 +12,10 @@ caldata <- read.csv("https://raw.githubusercontent.com/jonathan-chua/Kenway_FriD
 # Look at fields
 head(caldata)
 
+# Y distribution
+hist(caldata$logMedVal, main="Log Median Value Distribution")
+# Left Skewed
+
 # Hypothesize an initial relationship
 # Initial thought is that there is a relationship between Median Income and log Median Value
 # Understanding that this isn't the full method to do regression analysis, just a benchmark
@@ -51,6 +55,26 @@ abline(lr.cal, col="red", lwd=2)
 
 # Ok fit, there are issues with the data (top-coded / upper bounded) but it fits the general trend
 
+summary(lr.cal)
+# Very significant
+
+lr.cal$coefficients
+# For each unit increase of Median Income, observe a 0.19 increase in Log Median Value
+
+# Residual Analysis
+plot(predict(lr.cal), resid(lr.cal), col="darkgray", xlab="Y_hat", ylab="Residuals", main="Predictions vs. Residuals")
+abline(h=0, lty=2, lwd=2, col="blue")
+# Very clearly top-coded, but pretty evenly distributed outside of that
+
+# Studentized Residual Analysis
+hist(rstudent(lr.cal), col='blue', xlab = 'Studentized Residuals', main = 'Studentized Residuals')
+# Right skewed but normal, likely due to top coding
+
+## Q-Q Plot
+qqnorm(rstudent(lr.cal), col = 'blue', pch = 16, xlab = 'Theoretical Quantiles', ylab = 'Sample Quantiles', main = 'Q-Q Plot')
+abline(a=0, b=1)
+# Really well fit except for top coding
+
 # We'll measure accuracy using Mean Squared Error (MSE)
 # MSE = mean((prediction_i - actual_i)^2)
 
@@ -75,19 +99,29 @@ print(paste("Linear Regression MSE = ", round(lr.mse, 5), sep=""))
 # Add to performance table
 model.perf <- rbind(model.perf, data.frame(model="Linear Regression", mse=lr.mse))
 
-# k-NN Regression
+##### k-NN Regression
+
+# Replot
+plot(caldata$medianIncome, caldata$logMedVal,
+     # Main label
+     main="log(Median Value) by Median Income",
+     # Dot color
+     col="darkgray",
+     # X-Axis
+     xlab="Median Income",
+     # Y-Axis
+     ylab="log(Median Value)")
+
 # Plot initial effort
 # Create sample Median Incomes
 sample.income <- data.frame(medianIncome=sort(caldata$medianIncome))
 
 # Run for Median Income only w/ k=10
-knn.cal <- kknn(logMedVal ~ medianIncome, train=cal.train, test=sample.income, k=10, kernel="rectangular")
+knn.calInc <- kknn(logMedVal ~ medianIncome, train=cal.train, test=sample.income, k=10, kernel="rectangular")
 
-lines(sample.income$medianIncome, knn.cal$fitted.values, col="blue", lwd=2)
+lines(sample.income$medianIncome, knn.cal$fitted.values, col="blue", lwd=1)
 
 # Get Accuracy for Median Income and full models
-knn.calInc <- kknn(logMedVal ~ medianIncome, train=cal.train, test=cal.val, k=10, kernel="rectangular")
-
 knnInc.yhat <- knn.calInc$fitted.values
 
 knnInc.mse <- calc.mse(knnInc.yhat, cal.val$logMedVal)
@@ -98,11 +132,14 @@ print(paste("10-NN w/ Median Income = ", round(knnInc.mse, 5), sep=""))
 model.perf <- rbind(model.perf, data.frame(model="10-NN, Median Income", mse=knnInc.mse))
 # Actually worse than Linear Regression
 
-knn.calFull <- kknn(logMedVal ~ . , train=cal.train, test=cal.val, k=10, kernel="rectangular")
+# Full data
+full.test <- cal.test[order(cal.test$medianIncome), ]
+
+knn.calFull <- kknn(logMedVal ~ . , train=cal.train, test=full.test, k=10, kernel="rectangular")
 
 knnFull.yhat <- knn.calFull$fitted.values
 
-knnFull.mse <- calc.mse(knnFull.yhat, cal.val$logMedVal)
+knnFull.mse <- calc.mse(knnFull.yhat, full.test$logMedVal)
 
 print(paste("10-NN w/ All Fields = ", round(knnFull.mse, 5), sep=""))
 
@@ -110,10 +147,15 @@ print(paste("10-NN w/ All Fields = ", round(knnFull.mse, 5), sep=""))
 model.perf <- rbind(model.perf, data.frame(model="10-NN, All Fields", mse=knnFull.mse))
 # Significantly better performance
 
+# Plot full k-NN model
+lines(full.test$medianIncome, knn.calFull$fitted.values, col="green", lwd=1)
+
+legend("bottomright", legend=c("Median Income", "Full Model"), fill=c("blue", "green"))  
+
 # Tuning - picking the best k to optimize prediction
 # This is where train & test are used, validation is left out so that it is completely independent of our tuning
 
-# Capcture nn performance
+# Capture nn performance
 nn.mse <- matrix(NA, ncol=0, nrow=0)
 
 # Run model for k from 1 to 100, capturing the MSE for each value
@@ -122,7 +164,6 @@ for (nn in 1:100) {
   mse.train <- calc.mse(knn.train$fitted.values, cal.test$logMedVal)
   nn.mse <- rbind(nn.mse, data.frame(k=nn, mse=mse.train))
 }
-
 # Plot the MSE to find the best performing one
 plot(nn.mse$k, nn.mse$mse, type="l", col="navy", lwd=2,
      main="MSE by k",
@@ -134,6 +175,8 @@ min.k <- nn.mse[which.min(nn.mse$mse), ]
 points(min.k$k, min.k$mse, col="red", pch=16)
 
 print(paste("Optimal Value k = ", min.k$k, sep=""))
+
+
 
 # Run optimal model & get estimates...
 # Chart plot the fit against the data, remember to sort the test set by Median Income so it matches the chart
