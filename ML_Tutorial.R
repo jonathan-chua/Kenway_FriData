@@ -155,15 +155,23 @@ legend("bottomright", legend=c("Median Income", "Full Model"), fill=c("blue", "g
 # Tuning - picking the best k to optimize prediction
 # This is where train & test are used, validation is left out so that it is completely independent of our tuning
 
+# SD Function
+calc.sde <- function(yhat, y) {
+  e <- yhat - y
+  se <- e^2
+  return(sd(se))
+}
+
 # Capture nn performance
 nn.mse <- matrix(NA, ncol=0, nrow=0)
 
-# Run model for k from 1 to 100, capturing the MSE for each value
+# Run model for k from 1 to 100, MSE for each value
 for (nn in 1:100) {
   knn.train <- kknn(logMedVal ~ . , train=cal.train, test=cal.test, k=nn, kernel="rectangular")
   mse.train <- calc.mse(knn.train$fitted.values, cal.test$logMedVal)
-  nn.mse <- rbind(nn.mse, data.frame(k=nn, mse=mse.train))
+  nn.mse <- rbind(nn.mse, data.frame(k=nn, mse=mse.train, sde=sde.train))
 }
+
 # Plot the MSE to find the best performing one
 plot(nn.mse$k, nn.mse$mse, type="l", col="navy", lwd=2,
      main="MSE by k",
@@ -176,7 +184,95 @@ points(min.k$k, min.k$mse, col="red", pch=16)
 
 print(paste("Optimal Value k = ", min.k$k, sep=""))
 
+# 5-folds to use SD
+# Combine train & test
+cal.folds <- rbind(cal.test, cal.train)
 
+# Number of folds
+f <- 5
+# Total rows
+n <- nrow(cal.folds)
+# Records per fold
+l.fold <- round(n/f,0)
+
+# 5-fold k-NN
+fold.nnMSE <- matrix(NA, ncol=0, nrow=0)
+
+for (folds in 1:f) {
+  f.start <- if (folds==1) {1} else {f.start+l.fold}
+  f.end <- if (folds==1) {f.start+l.fold-1} else {f.end+l.fold}
+  i.fold <- f.start:f.end
+  f.train <- cal.folds[-i.fold,]
+  f.test <- cal.folds[i.fold,]
+  
+  for (nn in 1:100) {
+    f.knn <- kknn(logMedVal ~ . , train=f.train, test=f.test, k=nn, kernel="rectangular")
+    f.mse <- calc.mse(f.knn$fitted.values, f.test$logMedVal)
+    fold.nnMSE <- rbind(fold.nnMSE, data.frame(k=nn, mse=f.mse, fold=folds))
+  }
+}
+
+fold.mse <- data.frame(setNames(aggregate(fold.nnMSE$mse, by=list(fold.nnMSE$k), FUN="mean"), c("k","mse")))
+fold.sde <- data.frame(setNames(aggregate(fold.nnMSE$mse, by=list(fold.nnMSE$k), FUN="sd"), c("k","sde")))  
+
+plot(fold.mse$k, fold.mse$mse, type="l", col="darkgray", lwd=2,
+     main="MSE by k",
+     xlab="k",
+     ylab="MSE")
+
+points(fold.mse$k, fold.mse$mse, col="darkgray", pch=16)
+
+fmin.k <- fold.mse[which.min(fold.mse$mse), ]
+
+abline(h=fmin.k$mse, lty=2, lwd=1, col="black")
+
+segments(fold.sde$k, fold.mse$mse+fold.sde$sde, fold.sde$k, fold.mse$mse-fold.sde$sde, col="darkgray")
+
+points(fmin.k$k, fmin.k$mse, pch=16, col="red")
+
+f.optimal <- data.frame(fold.mse, mse_sde=fold.mse$mse-fold.sde$sde)
+
+f.optimal2 <- f.optimal[f.optimal$mse_sde <= fmin.k$mse, ]
+
+f.optimal3 <- f.optimal2[which.max(f.optimal2$k),]
+
+points(f.optimal3$k, f.optimal3$mse, pch=18, col="darkgreen", cex=1.5)
+
+print(paste("While k = ", fmin.k$k, " minimizes MSE, it is not statistically distinguishable from k = ", f.optimal3$k,". This will be used for the final calculation", sep=""))
+
+knn.fullFinal <- kknn(logMedVal ~ ., train=cal.train, test=cal.val, k=f.optimal3$k, kernel="rectangular")
+
+knnFinal.mse <- calc.mse(knn.fullFinal$fitted.values, cal.val$logMedVal)
+
+model.perf <- rbind(model.perf, data.frame(model="Optimal k-NN", mse=knnFull.mse))
+
+plot(cal.val$medianIncome, cal.val$logMedVal,
+     # Main label
+     main="log(Median Value) by Median Income",
+     # Dot color
+     col="darkgray",
+     # X-Axis
+     xlab="Median Income",
+     # Y-Axis
+     ylab="log(Median Value)")
+
+tmp.knnFinal <- data.frame(medIncome=cal.val$medianIncome, yhat=knn.fullFinal$fitted.values)
+tmp.knnFinal <- tmp.knnFinal[order(tmp.knnFinal$medIncome), ]
+
+lines(tmp.knnFinal$medIncome, tmp.knnFinal$yhat, col="darkgreen")
+
+plot(
+    cal.val$logMedVal, 
+    knn.fullFinal$fitted.values, 
+    xlab="Actual Values", 
+    ylab="Predicted Values",
+    col="darkgray",
+    main="Actual Values vs. Predicted Values"
+    )
+
+abline(a=0, b=1, col="red", lty=2, lwd=2)
+
+legend("topleft", legend=c("Perfect Predictions"), fill=c("red")) 
 
 # Run optimal model & get estimates...
 # Chart plot the fit against the data, remember to sort the test set by Median Income so it matches the chart
