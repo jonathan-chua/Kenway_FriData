@@ -147,6 +147,25 @@ print(paste("10-NN w/ All Fields = ", round(knnFull.mse, 5), sep=""))
 model.perf <- rbind(model.perf, data.frame(model="10-NN, All Fields", mse=knnFull.mse))
 # Significantly better performance
 
+# Show how increasing k decreases complexity & model-fitting
+# Show charts in a 2x2 matrix
+par(mfrow=c(2,2))
+# Going to test k from 1, 10, 20, ..., 100
+nn.test <- c(1,seq(10,100,10))
+nn.col <- length(nn.test)
+
+# Loop through the numbers, run the k-NN regression, plot the line
+for (i in 1:nn.col) {
+  nn <- nn.test[i]
+  knn.fitting <- kknn(logMedVal ~ medianIncome, train=cal.train, test=full.test, k=nn, kernel = "rectangular")
+  m.fitting <- cbind(data.frame(knn.fitting$fitted.values))
+  plot(full.test$medianIncome, full.test$logMedVal, xlab="Median Income", ylab="log(Median Value)", col="darkgray", main=paste("k = ", nn, sep=""))
+  lines(full.test$medianIncome, knn.fitting$fitted.values, col=i, lwd=2)
+}
+
+# As you can see, the lines get tighter as k increases;
+# if we ran a k-NN regression where k=n_observations, we would get a linear regression
+
 # Plot full k-NN model
 lines(full.test$medianIncome, knn.calFull$fitted.values, col="green", lwd=1)
 
@@ -169,7 +188,7 @@ nn.mse <- matrix(NA, ncol=0, nrow=0)
 for (nn in 1:100) {
   knn.train <- kknn(logMedVal ~ . , train=cal.train, test=cal.test, k=nn, kernel="rectangular")
   mse.train <- calc.mse(knn.train$fitted.values, cal.test$logMedVal)
-  nn.mse <- rbind(nn.mse, data.frame(k=nn, mse=mse.train, sde=sde.train))
+  nn.mse <- rbind(nn.mse, data.frame(k=nn, mse=mse.train))
 }
 
 # Plot the MSE to find the best performing one
@@ -272,9 +291,4 @@ plot(
 
 abline(a=0, b=1, col="red", lty=2, lwd=2)
 
-legend("topleft", legend=c("Perfect Predictions"), fill=c("red")) 
-
-# Run optimal model & get estimates...
-# Chart plot the fit against the data, remember to sort the test set by Median Income so it matches the chart
-# If possible, try and find the point with the smallest k that is statistically indistinguishable from the minimum point
-# That is, the MSE - 1 standard deviation of the error (or squared error)  <= the MSE of the minimum point
+legend("topleft", legend=c("Perfect Predictions"), fill=c("red"))
