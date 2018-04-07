@@ -106,7 +106,7 @@ plot(caldata$medianIncome, caldata$logMedVal,
      # Main label
      main="log(Median Value) by Median Income",
      # Dot color
-     col="darkgray",
+     col="darkgrey",
      # X-Axis
      xlab="Median Income",
      # Y-Axis
@@ -114,19 +114,64 @@ plot(caldata$medianIncome, caldata$logMedVal,
 
 # Plot initial effort
 # Create sample Median Incomes
-sample.income <- data.frame(medianIncome=sort(caldata$medianIncome))
+sample.income <- cal.val[order(cal.val$medianIncome),]
 
-# Run for Median Income only w/ k=10
-knn.calInc <- kknn(logMedVal ~ medianIncome, train=cal.train, test=sample.income, k=10, kernel="rectangular")
+# Run for Median Income only w/ k=25
+knn.calInc <- kknn(logMedVal ~ medianIncome, train=cal.train, test=sample.income, k=25, kernel="rectangular")
 
-lines(sample.income$medianIncome, knn.cal$fitted.values, col="blue", lwd=1)
+lines(sample.income$medianIncome, knn.calInc$fitted.values, col="blue", lwd=1)
 
 # Get Accuracy for Median Income and full models
 knnInc.yhat <- knn.calInc$fitted.values
 
 knnInc.mse <- calc.mse(knnInc.yhat, cal.val$logMedVal)
 
-print(paste("10-NN w/ Median Income = ", round(knnInc.mse, 5), sep=""))
+print(paste("25-NN w/ Median Income = ", round(knnInc.mse, 5), sep=""))
+
+# k-NN Illustration
+##### ***** Please use this, I'm very proud of it
+# Function to calculate Euclidean distance
+calc.dist <- function(y, yhat) {
+  return( sqrt((yhat-y)^2) )
+}
+
+viz <- data.frame(medianIncome=sample.income$medianIncome, logMedVal=sample.income$logMedVal, yhat=knn.calInc$fitted.values)
+n <- nrow(viz)
+keep <- seq(1,n,200)
+
+viz <- viz[keep,]
+
+n.viz <- nrow(viz)
+
+viz <- cbind(viz, n=1:n.viz)
+
+for (iter in 1:n.viz) {
+  x <- viz[iter, "medianIncome"]
+  row <- viz[iter, "n"]
+  dist <- data.frame(
+    medianIncome=cal.train$medianIncome, 
+    logMedVal=cal.train$logMedVal, 
+    distance=calc.dist(cal.train$medianIncome, x)
+  )
+  
+  plot(
+    sample.income$medianIncome,
+    sample.income$logMedVal,
+    pch=16,
+    col="darkgray",
+    xlab="Median Income",
+    ylab="ln(Median Value)",
+    main="ln(Median Value) by Median Income"
+  )
+  
+  lines(sample.income$medianIncome, knn.calInc$fitted.values, col="red")
+  
+  neighbors <- dist[order(dist$distance),]
+  points(neighbors$medianIncome[1:25], neighbors$logMedVal[1:25], col="navy", pch=16)
+  points(viz$medianIncome[row], viz$yhat[row], col="green", pch=16, cex=2)
+  #readline("go?")
+  Sys.sleep(.4)
+}
 
 # Add to performance table
 model.perf <- rbind(model.perf, data.frame(model="10-NN, Median Income", mse=knnInc.mse))
@@ -135,17 +180,66 @@ model.perf <- rbind(model.perf, data.frame(model="10-NN, Median Income", mse=knn
 # Full data
 full.test <- cal.test[order(cal.test$medianIncome), ]
 
-knn.calFull <- kknn(logMedVal ~ . , train=cal.train, test=full.test, k=10, kernel="rectangular")
+knn.calFull <- kknn(logMedVal ~ . , train=cal.train, test=full.test, k=25, kernel="rectangular")
 
 knnFull.yhat <- knn.calFull$fitted.values
 
 knnFull.mse <- calc.mse(knnFull.yhat, full.test$logMedVal)
 
-print(paste("10-NN w/ All Fields = ", round(knnFull.mse, 5), sep=""))
+print(paste("25-NN w/ All Fields = ", round(knnFull.mse, 5), sep=""))
 
 # Add to performance table
 model.perf <- rbind(model.perf, data.frame(model="10-NN, All Fields", mse=knnFull.mse))
 # Significantly better performance
+
+# Notice how the neighbors changed
+calc.dist_2 <- function(matrix, vector) {
+  d <- ncol(matrix)
+  dist <- matrix(NA, ncol=0, nrow=nrow(matrix))
+  for (z in 1:d) {
+    v <- as.numeric(vector[z])
+    dist <- cbind(dist, data.frame(d=(matrix[,z]-v)^2))
+  }
+  return(sqrt(rowSums(dist)))
+}
+
+viz <- data.frame(full.test, yhat=knn.calFull$fitted.values)
+n <- nrow(viz)
+keep <- seq(1,n,200)
+
+viz <- viz[keep,]
+
+n.viz <- nrow(viz)
+
+viz <- cbind(viz, n=1:n.viz)
+
+for (iter in 1:n.viz) {
+  x <- viz[iter, 1:9]
+  row <- viz[iter, "n"]
+  dist <- data.frame(
+    medianIncome=cal.train$medianIncome, 
+    logMedVal=cal.train$logMedVal, 
+    distance=calc.dist_2(cal.train[,1:9], x)
+  )
+  
+  plot(
+    full.test$medianIncome,
+    full.test$logMedVal,
+    pch=16,
+    col="darkgray",
+    xlab="Median Income",
+    ylab="ln(Median Value)",
+    main="ln(Median Value) by Median Income"
+  )
+  
+  lines(full.test$medianIncome, knn.calFull$fitted.values, col="red", lwd=0.5)
+  
+  neighbors <- dist[order(dist$distance),]
+  points(neighbors$medianIncome[1:25], neighbors$logMedVal[1:25], col="navy", pch=16)
+  points(viz$medianIncome[row], viz$yhat[row], col="green", pch=16, cex=2)
+  #readline("go?")
+  Sys.sleep(.4)
+}
 
 # Show how increasing k decreases complexity & model-fitting
 # Show charts in a 2x2 matrix
@@ -162,6 +256,8 @@ for (i in 1:nn.col) {
   plot(full.test$medianIncome, full.test$logMedVal, xlab="Median Income", ylab="log(Median Value)", col="darkgray", main=paste("k = ", nn, sep=""))
   lines(full.test$medianIncome, knn.fitting$fitted.values, col=i, lwd=2)
 }
+
+par(mfrow=c(1,1))
 
 # As you can see, the lines get tighter as k increases;
 # if we ran a k-NN regression where k=n_observations, we would get a linear regression
