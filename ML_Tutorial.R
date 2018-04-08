@@ -167,8 +167,8 @@ for (iter in 1:n.viz) {
   lines(sample.income$medianIncome, knn.calInc$fitted.values, col="red")
   
   neighbors <- dist[order(dist$distance),]
-  points(neighbors$medianIncome[1:25], neighbors$logMedVal[1:25], col="navy", pch=16)
-  points(viz$medianIncome[row], viz$yhat[row], col="green", pch=16, cex=2)
+  points(neighbors$medianIncome[1:25], neighbors$logMedVal[1:25], col="blue", pch=16)
+  points(viz$medianIncome[row], viz$yhat[row], col="black", pch=4, lwd=4, cex=2)
   #readline("go?")
   Sys.sleep(.4)
 }
@@ -235,8 +235,8 @@ for (iter in 1:n.viz) {
   lines(full.test$medianIncome, knn.calFull$fitted.values, col="red", lwd=0.5)
   
   neighbors <- dist[order(dist$distance),]
-  points(neighbors$medianIncome[1:25], neighbors$logMedVal[1:25], col="navy", pch=16)
-  points(viz$medianIncome[row], viz$yhat[row], col="green", pch=16, cex=2)
+  points(neighbors$medianIncome[1:25], neighbors$logMedVal[1:25], col="blue", pch=16)
+  points(viz$medianIncome[row], viz$yhat[row], col="black", pch=4, lwd=4, cex=2)
   #readline("go?")
   Sys.sleep(.4)
 }
