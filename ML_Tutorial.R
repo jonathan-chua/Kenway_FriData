@@ -29,6 +29,11 @@ plot(caldata$medianIncome, caldata$logMedVal,
      # Y-Axis
      ylab="log(Median Value)")
 
+max.x <- max(caldata$medianIncome)
+min.x <- min(caldata$medianIncome)
+max.y <- max(caldata$logMedVal)
+min.y <- min(caldata$logMedVal)
+
 # To properly test accuracy, we need to set up train, test, and validation sets
 # Train sets are used to develop the models
 # Test sets are used for model selection and tuning
@@ -132,7 +137,7 @@ print(paste("25-NN w/ Median Income = ", round(knnInc.mse, 5), sep=""))
 ##### ***** Please use this, I'm very proud of it
 # Function to calculate Euclidean distance
 calc.dist <- function(y, yhat) {
-  return( sqrt((yhat-y)^2) )
+  return( abs(yhat-y) )
 }
 
 viz <- data.frame(medianIncome=sample.income$medianIncome, logMedVal=sample.income$logMedVal, yhat=knn.calInc$fitted.values)
@@ -198,9 +203,9 @@ calc.dist_2 <- function(matrix, vector) {
   dist <- matrix(NA, ncol=0, nrow=nrow(matrix))
   for (z in 1:d) {
     v <- as.numeric(vector[z])
-    dist <- cbind(dist, data.frame(d=(matrix[,z]-v)^2))
+    dist <- cbind(dist, data.frame(d=abs(matrix[,z]-v)))
   }
-  return(sqrt(rowSums(dist)))
+  return(rowSums(dist))
 }
 
 viz <- data.frame(full.test, yhat=knn.calFull$fitted.values)
@@ -229,7 +234,9 @@ for (iter in 1:n.viz) {
     col="darkgray",
     xlab="Median Income",
     ylab="ln(Median Value)",
-    main="ln(Median Value) by Median Income"
+    main="ln(Median Value) by Median Income",
+    xlim=c(0,max.x),
+    ylim=c(min.y*0.9,max.y)
   )
   
   lines(full.test$medianIncome, knn.calFull$fitted.values, col="red", lwd=0.5)
