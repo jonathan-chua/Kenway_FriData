@@ -7,6 +7,7 @@ library(kknn)
 #library(rpart)
 
 # Load data
+# Preload
 caldata <- read.csv("https://raw.githubusercontent.com/jonathan-chua/Kenway_FriData/Intro_to_Machine_Learning/CaliforniaHousing.csv")
 
 # Look at fields
@@ -29,6 +30,7 @@ plot(caldata$medianIncome, caldata$logMedVal,
      # Y-Axis
      ylab="log(Median Value)")
 
+# Store max and min to format chart axes
 max.x <- max(caldata$medianIncome)
 min.x <- min(caldata$medianIncome)
 max.y <- max(caldata$logMedVal)
@@ -39,6 +41,9 @@ min.y <- min(caldata$logMedVal)
 # Test sets are used for model selection and tuning
 # Validation sets are the final proving ground for a model
 # We'll go with 60% train, 20% test, 20% validation
+
+# Preload
+
 set.seed(1)
 # Number of records
 n <- nrow(caldata)
@@ -55,6 +60,8 @@ cal.val <- cal.test_val[-test.obs, ]
 cal.cv <- rbind(cal.test, cal.train)
 
 # Run Linear Regression
+
+# Preload
 lr.cal <- lm(logMedVal ~ medianIncome, data=cal.cv)
 
 abline(lr.cal, col="red", lwd=2)
@@ -85,6 +92,7 @@ abline(a=0, b=1)
 # MSE = mean((prediction_i - actual_i)^2)
 
 # Create a function because we'll be using this a lot
+# Preload
 calc.mse <- function(yhat, y) {
   e <- yhat - y
   se <- e^2
@@ -120,6 +128,8 @@ plot(caldata$medianIncome, caldata$logMedVal,
      ylab="log(Median Value)")
 
 # Run Linear Regression
+# Preload
+# NOTE "." means all variables
 lr.calFull <- lm(logMedVal ~ . , data=cal.train)
 
 pred.calFull <- cal.val[order(cal.val$medianIncome),]
@@ -165,6 +175,7 @@ plot(caldata$medianIncome, caldata$logMedVal,
 sample.income <- cal.val[order(cal.val$medianIncome),]
 
 # Run for Median Income only w/ k=25
+# Preload
 knn.calInc <- kknn(logMedVal ~ medianIncome, train=cal.cv, test=sample.income, k=25, kernel="rectangular")
 
 lines(sample.income$medianIncome, knn.calInc$fitted.values, col="blue", lwd=1)
@@ -185,6 +196,7 @@ model.perf <- rbind(model.perf, data.frame(model="25-NN, Median Income Only", ms
 # k-NN Illustration
 ##### ***** Please use this, I'm very proud of it
 # Function to calculate Euclidean distance
+# Preload
 calc.dist <- function(y, yhat) {
   return( (abs(yhat-y)^2)^1/2 )
 }
@@ -345,9 +357,10 @@ par(mfrow=c(1,1))
 # This is where train & test are used, validation is left out so that it is completely independent of our tuning
 
 # Capture nn performance
-nn.mse <- matrix(NA, ncol=0, nrow=0)
 
 # Run model for k from 1 to 100, MSE for each value
+# Preload
+nn.mse <- matrix(NA, ncol=0, nrow=0)
 for (nn in 1:100) {
   knn.train <- kknn(logMedVal ~ . , train=cal.train, test=cal.test, k=nn, kernel="rectangular")
   mse.train <- calc.mse(knn.train$fitted.values, cal.test$logMedVal)
@@ -366,7 +379,7 @@ points(min.k$k, min.k$mse, col="red", pch=16)
 
 print(paste("Optimal Value k = ", min.k$k, sep=""))
 
-# What this tell us is that based on cross-validating each k with our train and test sets,
+# What this tells us is that based on cross-validating each k with our train and test sets,
 # k=11 is the best value to use.
 # We need to confirm this against the validation set and compare that with our old models to
 # pick the "best" one for implementation
@@ -374,7 +387,7 @@ print(paste("Optimal Value k = ", min.k$k, sep=""))
 knn.optimal <- kknn(logMedVal ~ . , train=cal.train, test=cal.val, k=min.k$k, kernel="rectangular")
 optimal.train <- calc.mse(knn.optimal$fitted.values, cal.test$logMedVal)
 
-print(paste("k-NN, Full MOdel tuning on k = ", round(optimal.train, 5), sep=""))
+print(paste("k-NN, Full Model tuning on k = ", round(optimal.train, 5), sep=""))
 
 model.perf <- rbind(model.perf, data.frame(model="k-NN, Full MOdel tuning on k", mse=optimal.train))
 
@@ -407,15 +420,16 @@ n <- nrow(cal.cv)
 l.fold <- round(n/f,0)
 
 # 10-fold k-NN
+# PRELOAD THIS TAKES FOREVER
 fold.nnMSE <- matrix(NA, ncol=0, nrow=0)
 
 for (folds in 1:f) {
-  # Identify 1/5 of the data as a test set
+  # Identify 1/10 of the data as a test set
   f.start <- if (folds==1) {1} else {f.start+l.fold}
   f.end <- if (folds==1) {f.start+l.fold-1} else {f.end+l.fold}
   i.fold <- f.start:f.end
   
-  # Mark the training set as the remaining 4/5
+  # Mark the training set as the remaining 9/10
   f.train <- cal.cv[-i.fold,]
   # Mark the test set
   f.test <- cal.cv[i.fold,]
@@ -470,7 +484,7 @@ knnFinal.mse <- calc.mse(knn.fullFinal$fitted.values, cal.val$logMedVal)
 
 print(paste("k-NN, Full MOdel tuning on k w/ 10-fold CV = ", round(knnFinal.mse, 5), sep=""))
 
-model.perf <- rbind(model.perf, data.frame(model="k-NN, Full MOdel tuning on k w/ 10-fold CV = ", mse=knnFinal.mse))
+model.perf <- rbind(model.perf, data.frame(model="k-NN, Full MOdel tuning on k w/ 10-fold CV", mse=knnFinal.mse))
 
 # This one is the best performing of our tests
 
