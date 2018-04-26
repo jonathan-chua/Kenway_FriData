@@ -1,4 +1,5 @@
 #### This code installs or updates some commonly used packages
+# Last update: 2018 April 26
 
 packageNames = c(
   "glmnet", 
