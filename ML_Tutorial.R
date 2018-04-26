@@ -242,7 +242,7 @@ for (iter in 1:n.viz) {
 # Full data
 full.test <- cal.test[order(cal.test$medianIncome), ]
 
-knn.calFull <- kknn(logMedVal ~ . , train=cal.train, test=full.val, k=25, kernel="rectangular", distance=2)
+knn.calFull <- kknn(logMedVal ~ . , train=cal.train, test=full.test, k=25, kernel="rectangular", distance=2)
 
 # Plot full k-NN model
 
